@@ -1,5 +1,6 @@
 .cache
 out
+compile_commands.json
 **/*.a
 **/*.o
 **/*.out
