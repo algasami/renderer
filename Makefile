@@ -28,6 +28,6 @@ install-headers: build-folder
 	done
 
 clean:
-	rm -rf ${BUILD}
+	rm -rf ${BUILD}/*.out
 	find . -name "*.a" -type f -delete
 	find . -name "*.o" -type f -delete
