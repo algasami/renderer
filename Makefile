@@ -15,6 +15,7 @@ build-folder:
 	@mkdir -p ${BUILD}/lib
 
 install: build-folder install-headers
+	rm -f compile_commands.json
 	@echo Installing Applications
 	@for project in ${PROJECTS}; do\
 		(cd src/$${project} && make install);\
