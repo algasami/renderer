@@ -1,4 +1,4 @@
 make clean
 rm -rf out
-make build
+./build.sh
 ./out/a.out
