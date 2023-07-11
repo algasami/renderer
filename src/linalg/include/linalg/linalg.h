@@ -3,7 +3,7 @@
 #ifndef LINALG_H
 #define LINALG_H
 
-#define MATIND(m, i, j, t) ((t *)(m).buffer)[(i) * (m).cols + (j)]
+#define MATIND(m, i, j, t) (((t *)(m).buffer)[(i) * (m).cols + (j)])
 
 #include <stddef.h>
 
@@ -26,8 +26,11 @@ void la_destroy_matrix(struct La_Matrix *ptr);
 void la_print_matrix(struct La_Matrix *ptr);
 
 void la_id_matrix(struct La_Matrix *ptr, size_t rowcols, enum LA_ELEM_TYPES t);
-int la_matrix_mul(struct La_Matrix *ptr_a, struct La_Matrix *ptr_b, struct La_Matrix *ptr_result);
 
-int la_matrix_pow(struct La_Matrix *ptr, unsigned int pow);
+int la_matrix_copy(struct La_Matrix *base, struct La_Matrix *dest);
+int la_matrix_mul(struct La_Matrix *ptr_a, struct La_Matrix *ptr_b, struct La_Matrix *ptr_result);
+void la_matrix_zero(struct La_Matrix *ptr);
+
+int la_matrix_pow(struct La_Matrix *ptr, unsigned int pow, struct La_Matrix *ptr_result);
 
 #endif
