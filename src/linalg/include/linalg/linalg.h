@@ -15,6 +15,7 @@ enum LA_ELEM_TYPES
 
 struct La_Matrix
 {
+    int __inited;
     size_t rows, cols;
     enum LA_ELEM_TYPES t;
     void *buffer;

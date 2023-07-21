@@ -5,9 +5,15 @@
 
 void la_init_matrix(struct La_Matrix *ptr, size_t rows, size_t cols, enum LA_ELEM_TYPES t)
 {
+    if (ptr->__inited == 1)
+    {
+        printf("la_init_matrix: matrix has been initialized!!!");
+        return;
+    }
     ptr->rows = rows;
     ptr->cols = cols;
     ptr->t = t;
+    ptr->__inited = 1;
     switch (t)
     {
     case LA_FLOAT_T:
@@ -25,6 +31,7 @@ void la_init_matrix(struct La_Matrix *ptr, size_t rows, size_t cols, enum LA_ELE
 void la_destroy_matrix(struct La_Matrix *ptr)
 {
     free(ptr->buffer);
+    ptr->__inited = 0;
 }
 
 void la_print_matrix(struct La_Matrix *ptr)
@@ -51,7 +58,10 @@ void la_print_matrix(struct La_Matrix *ptr)
 
 void la_id_matrix(struct La_Matrix *ptr, size_t rowcols, enum LA_ELEM_TYPES t)
 {
-    la_init_matrix(ptr, rowcols, rowcols, t);
+    if (ptr->__inited != 1)
+    {
+        la_init_matrix(ptr, rowcols, rowcols, t);
+    }
     for (size_t i = 0; i < rowcols; i++)
     {
         switch (t)
@@ -70,6 +80,11 @@ void la_id_matrix(struct La_Matrix *ptr, size_t rowcols, enum LA_ELEM_TYPES t)
 
 int la_matrix_copy(struct La_Matrix *base, struct La_Matrix *dest)
 {
+    if (dest->__inited != 1)
+    {
+        la_init_matrix(dest, base->rows, base->cols, base->t);
+    }
+
     if (dest->rows != base->rows || dest->cols != base->cols)
         return -1;
     for (int i = 0; i < base->rows; i++)
@@ -105,13 +120,24 @@ inline void la_matrix_zero(struct La_Matrix *ptr)
 
 int la_matrix_mul(struct La_Matrix *ptr_a, struct La_Matrix *ptr_b, struct La_Matrix *ptr_result)
 {
-    if (ptr_a == ptr_result || ptr_b == ptr_result)
-    {
-        printf("la_matrix_mul: ptr_result's address is identical to that of ptr_a or ptr_b! UB\n");
-    }
-    la_matrix_zero(ptr_result);
     if (ptr_a->cols != ptr_b->rows || ptr_a->rows != ptr_result->rows || ptr_b->cols != ptr_result->cols)
         return -1;
+
+    int enable_buffer = ptr_a == ptr_result || ptr_b == ptr_result;
+    struct La_Matrix *target;
+    if (enable_buffer)
+    {
+        printf("la_matrix_mul: ptr_result's address is identical to that of ptr_a or ptr_b! Enabling buffer!\n");
+        target = malloc(sizeof(struct La_Matrix));
+        la_init_matrix(target, ptr_a->rows, ptr_b->cols, ptr_a->t);
+        // Allocate target on heap
+    }
+    else
+    {
+        target = ptr_result;
+    }
+    // tmp is used to avoid ptr_a = ptr_result or ptr_b = ptr_result
+
     for (int i = 0; i < ptr_a->rows; i++)
     {
         for (int j = 0; j < ptr_b->cols; j++)
@@ -121,11 +147,10 @@ int la_matrix_mul(struct La_Matrix *ptr_a, struct La_Matrix *ptr_b, struct La_Ma
                 switch (ptr_result->t)
                 {
                 case LA_FLOAT_T:
-                    MATIND(*ptr_result, i, j, float) += MATIND(*ptr_a, i, k, float) * MATIND(*ptr_b, k, j, float);
+                    MATIND(*target, i, j, float) += MATIND(*ptr_a, i, k, float) * MATIND(*ptr_b, k, j, float);
                     break;
                 case LA_INT_T:
-                    printf("%d\n",
-                           (MATIND(*ptr_result, i, j, int) += MATIND(*ptr_a, i, k, int) * MATIND(*ptr_b, k, j, int)));
+                    MATIND(*target, i, j, int) += MATIND(*ptr_a, i, k, int) * MATIND(*ptr_b, k, j, int);
                     break;
                 default:
                     break;
@@ -133,36 +158,48 @@ int la_matrix_mul(struct La_Matrix *ptr_a, struct La_Matrix *ptr_b, struct La_Ma
             }
         }
     }
+    if (enable_buffer)
+    {
+        la_matrix_copy(target, ptr_result);
+        la_destroy_matrix(target);
+        free(target);
+        // remove target from heap
+    }
     return 0;
 }
 
 int la_matrix_pow(struct La_Matrix *ptr, unsigned int pow, struct La_Matrix *ptr_result)
 {
-    if (ptr == ptr_result)
+    int enable_buffer = ptr == ptr_result;
+    struct La_Matrix *target;
+    if (enable_buffer)
     {
-        printf("la_matrix_pow: ptr_result's address is identical to that of ptr! UB\n");
+        printf("la_matrix_pow: ptr_result's address is identical to that of ptr! Enabling Buffer\n");
+        target = malloc(sizeof(struct La_Matrix));
+        la_init_matrix(target, ptr->rows, ptr->cols, ptr->t);
     }
-    if (la_matrix_copy(ptr, ptr_result) == -1)
+    else
+    {
+        target = ptr_result;
+    }
+    if (la_matrix_copy(ptr, target) == -1)
         return -1;
-
-    struct La_Matrix buffer;
-    la_init_matrix(&buffer, ptr_result->rows, ptr_result->cols, ptr_result->t);
 
     unsigned int i = pow;
     while ((i = i >> 1))
     {
-        la_matrix_mul(ptr_result, ptr_result, &buffer);
-        la_matrix_copy(&buffer, ptr_result);
+        la_matrix_mul(target, target, target);
     }
     if (pow & 1)
     {
-        la_print_matrix(ptr);
-        la_print_matrix(ptr_result);
-        la_matrix_mul(ptr, ptr_result, &buffer);
-        la_matrix_copy(&buffer, ptr_result);
+        la_matrix_mul(ptr, target, target);
     }
-    la_print_matrix(&buffer);
-    la_destroy_matrix(&buffer);
+    if (enable_buffer)
+    {
+        la_matrix_copy(target, ptr_result);
+        la_destroy_matrix(target);
+        free(target);
+    }
 
     return 0;
 }
